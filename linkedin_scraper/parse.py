@@ -25,6 +25,7 @@ def parse_job_html(html_block):
         "location": safe_select(".job-card-container__metadata-item"),
         "listed": safe_select(".job-card-list__footer-wrapper"),
         "description": safe_select(".job-card-list__description"),
+        "source": safe_select(".job-card-list_source"),
     }
 
 def parse_all_jobs(raw_data):
