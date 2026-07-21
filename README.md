@@ -56,35 +56,56 @@ Full control over the entire pipeline
 🏗️ Architecture
 The system is built as a clean, modular pipeline:
 
-local-job-intel-agent/
-│
-├── linkedin_scraper/        # Playwright/Selenium-based job scraping
-│   ├── search.py
-│   └── parse.py
-│
-├── llm_analysis/            # Local LLM summarization + scoring
-│   ├── summarize.py
-│   └── fit_score.py
-│
-├── storage/                 # SQLite database + models
-│   ├── db.py
-│   └── models.py
-│
-├── reports/                 # Weekly report generators
-│   ├── weekly_report_md.py  # Markdown report generator
-│   ├── weekly_report_tex.py # LaTeX report generator (NEW)
-│   └── templates/
-│       └── report_template.tex  # Base LaTeX template (NEW)
-│
-├── github_automation/       # Auto-commit weekly reports
-│   └── commit_and_push.py
-│
-├── config/                  # User settings
-│   └── settings.yaml
-│
-├── data/                    # Raw + processed job listings
-│
-└── main.py                  # Pipeline entry point
+📁 Project Structure (Readable Format)
+linkedin_scraper/
+Playwright/Selenium‑based job scraping
+
+search.py
+
+parse.py
+
+llm_analysis/
+Local LLM summarization and scoring
+
+summarize.py
+
+fit_score.py
+
+storage/
+SQLite database and data models
+
+db.py
+
+models.py
+
+reports/
+Weekly report generators
+
+weekly_report_md.py — Markdown report generator
+
+weekly_report_tex.py — LaTeX report generator
+
+templates/
+
+report_template.tex — Base LaTeX template
+
+github_automation/
+Automated weekly GitHub commits
+
+commit_and_push.py
+
+config/
+User‑defined settings
+
+settings.yaml
+
+data/
+Raw and processed job listings
+
+(SQLite DB + JSON dumps live here)
+
+main.py
+Pipeline entry point
 
 🔍 Core Features
 1. Local LinkedIn Scraping (Read‑Only)
