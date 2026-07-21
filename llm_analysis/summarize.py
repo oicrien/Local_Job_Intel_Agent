@@ -31,6 +31,7 @@ def summarize_all(jobs):
     summaries = []
     for job in jobs:
         summaries.append({
+            "source": job.get("source", "linkedin"),
             "title": job.get("title"),
             "company": job.get("company"),
             "location": job.get("location"),
