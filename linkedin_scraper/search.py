@@ -1,35 +1,44 @@
 import json
 from pathlib import Path
+from playwright.sync_api import sync_playwright
 
 OUTPUT = Path("data/raw_search_results.json")
 
-def fake_linkedin_results():
-    return [
-        {
-            "html": f"""
-                <div class="job-card">
-                    <h3 class="job-card-list__title">Reliability Engineer</h3>
-                    <span class="job-card-container__company-name">FusionTech Labs</span>
-                    <span class="job-card-container__metadata-item">Vancouver, BC</span>
-                    <p class="job-card-list__description">
-                        We are seeking a reliability engineer with experience in product integrity and safety...
-                    </p>
-                </div>
-            """
-        },
-        {
-            "html": f"""
-                <div class="job-card">
-                    <h3 class="job-card-list__title">Radiation Protection Technologist</h3>
-                    <span class="job-card-container__company-name">CleanCore Energy</span>
-                    <span class="job-card-container__metadata-item">Burnaby, BC</span>
-                    <p class="job-card-list__description">
-                        NRRPT certification preferred. Experience in nuclear operations and safety...
-                    </p>
-                </div>
-            """
-        },
-    ]
+def scrape_linkedin_jobs(query="Reliability Engineer", location="Canada"):
+    results = []
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+
+        # LinkedIn job search URL
+        search_url = (
+            "https://www.linkedin.com/jobs/search/?keywords="
+            + query.replace(" ", "%20")
+            + "&location="
+            + location.replace(" ", "%20")
+        )
+
+        print(f"Navigating to {search_url}")
+        page.goto(search_url)
+
+        # Scroll to load more jobs
+        for _ in range(5):
+            page.mouse.wheel(0, 4000)
+            page.wait_for_timeout(1500)
+
+        # Select job cards
+        job_cards = page.query_selector_all("div.job-card-container")
+
+        print(f"Found {len(job_cards)} job cards")
+
+        for card in job_cards:
+            html = card.inner_html()
+            results.append({"html": html})
+
+        browser.close()
+
+    return results
 
 def save_results(results):
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
@@ -38,7 +47,7 @@ def save_results(results):
     print(f"Saved raw results to {OUTPUT}")
 
 def main():
-    results = fake_linkedin_results()
+    results = scrape_linkedin_jobs()
     save_results(results)
 
 if __name__ == "__main__":
