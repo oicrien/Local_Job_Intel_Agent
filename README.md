@@ -1,111 +1,82 @@
 # Local_Job_Intel_Agent
 A fully local, privacy-safe Ai agent that scrapes, summarizes, scores, and tracks job listings using local LLMs - with ZERO cloud dependencies
 
-All intelligence runs locally on the user’s machine.
+🚀 All intelligence runs locally on the user’s machine🚀
 
 🚀 Project Overview
 Local_Job_Intel_Agent is a modular, CPU‑friendly job‑analysis system designed to help job seekers efficiently navigate technical roles without relying on external APIs or automated submissions.
 
-The agent performs four core tasks:
-
-Scrape job listings (read‑only, human‑in‑the‑loop)
-
-Summarize and analyze each posting using a local LLM
-
-Score job relevance based on user‑defined skills
-
-Track results and generate weekly GitHub‑ready reports
+🧠 The agent performs four core tasks:
+1) Scrape job listings (read‑only, human‑in‑the‑loop)
+2) Summarize and analyze each posting using a local LLM
+3) Score job relevance based on user‑defined skills
+4) Track results and generate weekly GitHub‑ready reports
 
 ## LaTeX Reports (Overleaf Integration)
 
-This project generates weekly LaTeX reports as well in `reports/weekly_report.tex`.
+🧠 This project generates weekly LaTeX reports as well in `reports/weekly_report.tex`.
 These can be uploaded directly into an Overleaf project for professional formatting, and
 PDF export.
-
-This project is ideal for showcasing:
-
-Python automation
-
-Local LLM integration
-
-Data engineering
-
-Privacy‑aware system design
-
-Recruiter‑friendly reporting
-
-Real‑world workflow optimization
-
-LaTex Report generation
 
 🧠 Why Local‑Only?
 Most AI job‑search tools rely on cloud APIs, auto‑apply pipelines, or third‑party services. This project intentionally avoids all of that.
 
 Benefits of local‑only architecture:
+1) Zero cost
+2) Zero external data exposure
+3) Zero risk of violating LinkedIn automation rules
+4) Zero immigration‑related digital footprint concerns
+5) Full control over the entire pipeline
 
-Zero cost
-
-Zero external data exposure
-
-Zero risk of violating LinkedIn automation rules
-
-Zero immigration‑related digital footprint concerns
-
-Full control over the entire pipeline
 
 🏗️ Architecture
 The system is built as a clean, modular pipeline:
 
 📁 Project Structure (Readable Format)
-linkedin_scraper/
-Playwright/Selenium‑based job scraping
+linkedin_scraper/ *Playwright/Selenium‑based job scraping*
 
 search.py
 
 parse.py
 
-llm_analysis/
-Local LLM summarization and scoring
+📁 llm_analysis/ *Local LLM summarization and scoring*
 
 summarize.py
 
 fit_score.py
 
-storage/
-SQLite database and data models
+📁 storage/ *SQLite database and data models*
 
 db.py
 
 models.py
 
-reports/
-Weekly report generators
+📁 reports/ *Weekly report generators*
 
 weekly_report_md.py — Markdown report generator
 
 weekly_report_tex.py — LaTeX report generator
 
-templates/
+📁 templates/
 
 report_template.tex — Base LaTeX template
 
-github_automation/
-Automated weekly GitHub commits
+📁 github_automation/ *Automated weekly GitHub commits*
 
 commit_and_push.py
 
-config/
-User‑defined settings
+📁 config/ *User‑defined settings*
 
 settings.yaml
 
-data/
-Raw and processed job listings
+📁 data/ *Raw and processed job listings
 
-(SQLite DB + JSON dumps live here)
+  (SQLite DB + JSON dumps live here)
 
+
+📁 Main *Pipeline entry point*
 main.py
-Pipeline entry point
+
 
 🔍 Core Features
 1. Local LinkedIn Scraping (Read‑Only)
@@ -160,6 +131,7 @@ Agent improvements
 
 Then commits them automatically.
 
+
 📦 Installation
 Clone the repository:
 
@@ -174,6 +146,8 @@ Initialize the database:
 
 bash
 python3 main.py
+
+
 🛠️ Roadmap
 Phase 1 — MVP (Complete)
 Project structure
