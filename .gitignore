@@ -17,3 +17,11 @@ test-results/
 
 # System files
 .DS_Store
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.pdf
+
