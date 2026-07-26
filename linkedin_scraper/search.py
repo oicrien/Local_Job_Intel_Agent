@@ -12,19 +12,30 @@ PASSWORD = os.getenv("LINKEDIN_PASSWORD")
 def linkedin_login(page):
     print("Logging into LinkedIn...")
 
+    # Go to login page
     page.goto("https://www.linkedin.com/login", timeout=60000)
-    page.wait_for_timeout(3000)
+    page.wait_for_timeout(2000)
 
-    page.fill("input#username", EMAIL)
-    page.fill("input#password", PASSWORD)
+    # If redirected to feed or jobs, you're already logged in
+    if "feed" in page.url or "jobs" in page.url:
+        print("Already logged in — skipping login.")
+        return
 
-    page.click("button[type='submit']")
-    page.wait_for_timeout(5000)
+    # Otherwise perform login
+    try:
+        page.fill('input[name="session_key"]', EMAIL)
+        page.fill('input[name="session_password"]', PASSWORD)
+        page.click('button[type="submit"]')
+        page.wait_for_timeout(5000)
+    except Exception as e:
+        print(f"Login form not found, skipping login. Reason: {e}")
+        return
 
     if "feed" in page.url or "jobs" in page.url:
         print("Login successful.")
     else:
         print("Login may have failed — continuing anyway.")
+
 
 def scrape_linkedin_jobs(query="Reliability Engineer", location="Canada", pages=5):
     results = []
