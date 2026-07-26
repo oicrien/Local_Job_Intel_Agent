@@ -55,7 +55,7 @@ def parse_job_html(html_block):
     # Extract only the relevant part of the description after key headers
     if description:
         lowered = description.lower()
-
+    
         section_headers = [
             "requirements",
             "qualifications",
@@ -64,10 +64,10 @@ def parse_job_html(html_block):
             "about the role",
             "about",
             "skills",
+            "duties",
             "what you'll do",
             "what you will do",
-            "role",
-            "duties"
+            "role"
         ]
 
     extracted = None
