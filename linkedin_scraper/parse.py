@@ -53,7 +53,7 @@ def parse_job_html(html_block):
         description = safe_select(".job-details__main-content")
 
     # Extract only the relevant part of the description after key headers
-    if description:
+if description:
         lowered = description.lower()
     
         section_headers = [
