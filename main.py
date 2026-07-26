@@ -59,8 +59,8 @@ def run_summarizer():
         "phi3":    "llm_analysis/summarize_phi3.py"
     }.get(MODEL, "llm_analysis/summarize.py")
 
-    subprocess.run(["python", "-m", script.replace("/", ".").replace(".py", "")], check=True)
-
+    module = script.replace("/", ".").replace(".py", "")
+    subprocess.run(["python", "-m", module], check=True)
 
     if SUMMARIES.exists():
         print(f"Summaries saved to {SUMMARIES}")
@@ -76,7 +76,9 @@ def run_fit_score():
         "phi3":    "llm_analysis/fit_score_phi3.py"
     }.get(MODEL, "llm_analysis/fit_score.py")
 
-    subprocess.run(["python", script], check=True)
+    module = script.replace("/", ".").replace(".py", "")
+    subprocess.run(["python", "-m", module], check=True)
+
     print("Fit scores generated.")
 
 # --- STEP 5: Markdown report ---
