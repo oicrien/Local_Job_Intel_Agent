@@ -1,6 +1,7 @@
 import json
 import re
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 from llm_analysis.ollama_client import ollama_generate
 
 SUMMARIES = Path("data/summaries_qwen2.json")
@@ -34,13 +35,15 @@ Explanation: <3–6 sentences>
 def main():
     jobs = json.load(open(SUMMARIES))
 
-    for job in jobs:
-        score, explanation = score_job(job)
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        results = list(executor.map(score_job, jobs))
+
+    for job, (score, explanation) in zip(jobs, results):
         job["fit_score_qwen2"] = score
         job["fit_explanation_qwen2"] = explanation
 
     json.dump(jobs, open(SUMMARIES, "w"), indent=2)
-    print("Fit scores generated using Qwen2.")
+    print("Fit scores generated using Qwen2 (parallel).")
 
 if __name__ == "__main__":
     main()
