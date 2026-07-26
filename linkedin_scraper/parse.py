@@ -48,7 +48,7 @@ def parse_job_html(html_block):
 
 def parse_all_jobs(raw_data):
     parsed = []
-    seen = set()
+    seen = set()  # Deduplication across ALL pages
 
     for entry in raw_data:
         html_block = entry.get("html")
@@ -59,7 +59,7 @@ def parse_all_jobs(raw_data):
         if not job:
             continue
 
-        # Deduplication key
+        # Deduplication key (title/company/location)
         key = (job["title"], job["company"], job["location"])
         if key in seen:
             continue
