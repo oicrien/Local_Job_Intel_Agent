@@ -1,21 +1,43 @@
-def simple_fit_score(job, skills_keywords=None):
-    if skills_keywords is None:
-        skills_keywords = [
-            "reliability",
-            "product integrity",
-            "nuclear",
-            "fusion",
-            "NRRPT",
-            "safety",
-        ]
+import json
+from pathlib import Path
+from llm_analysis.ollama_client import ollama_generate
 
-    text = (job.get("raw_text") or "").lower()
-    score = 0
+SUMMARIES = Path("data/summaries.json")
 
-    for kw in skills_keywords:
-        if kw.lower() in text:
-            score += 1
+MODEL = "phi3"
 
-    max_score = len(skills_keywords)
-    return score / max_score if max_score > 0 else 0.0
+def score_job(job):
+    prompt = f"""
+Rate how well this job fits a candidate with the following background:
 
+- Reliability engineering
+- Product integrity
+- Physical chemistry
+- Hands-on hardware troubleshooting
+- AI/ML engineering interest
+
+Job summary:
+{job.get('summary')}
+
+Give a score from 0 to 100 and explain briefly.
+"""
+    response = ollama_generate(MODEL, prompt)
+
+    # Extract score (simple heuristic)
+    import re
+    match = re.search(r"(\d{1,3})", response)
+    score = int(match.group(1)) if match else 50
+
+    return score, response
+
+def main():
+    jobs = json.load(open(SUMMARIES))
+    for job in jobs:
+        score, explanation = score_job(job)
+        job["fit_score"] = score
+        job["fit_explanation"] = explanation
+
+    json.dump(jobs, open(SUMMARIES, "w"), indent=2)
+
+if __name__ == "__main__":
+    main()
