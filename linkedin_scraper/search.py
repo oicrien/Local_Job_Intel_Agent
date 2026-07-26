@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 from playwright.sync_api import sync_playwright
+import time
 
 OUTPUT = Path("data/raw_search_results.json")
 
@@ -8,10 +9,10 @@ def scrape_linkedin_jobs(query="Reliability Engineer", location="Canada"):
     results = []
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        # IMPORTANT: LinkedIn blocks headless scrapers
+        browser = p.chromium.launch(headless=False)
         page = browser.new_page()
 
-        # LinkedIn job search URL
         search_url = (
             "https://www.linkedin.com/jobs/search/?keywords="
             + query.replace(" ", "%20")
@@ -20,15 +21,18 @@ def scrape_linkedin_jobs(query="Reliability Engineer", location="Canada"):
         )
 
         print(f"Navigating to {search_url}")
-        page.goto(search_url)
+        page.goto(search_url, timeout=60000)
 
-        # Scroll to load more jobs
-        for _ in range(5):
+        print("If LinkedIn asks you to log in, do it manually.")
+        time.sleep(20)  # allow login + JS load
+
+        # Scroll to load dynamic job cards
+        for _ in range(6):
             page.mouse.wheel(0, 4000)
             page.wait_for_timeout(1500)
 
-        # Select job cards
-        job_cards = page.query_selector_all("div.job-card-container")
+        # Updated selector — LinkedIn changed their DOM
+        job_cards = page.query_selector_all("div.base-card")
 
         print(f"Found {len(job_cards)} job cards")
 
