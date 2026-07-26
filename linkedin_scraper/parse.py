@@ -91,7 +91,6 @@ if description:
         if not title or not company or not location:
             return None
     
-    
         return {
             "title": title,
             "company": company,
