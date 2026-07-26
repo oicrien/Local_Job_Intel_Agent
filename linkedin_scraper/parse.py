@@ -56,6 +56,11 @@ def parse_job_html(html_block):
     if not title or not company or not location:
         return None
 
+    # Truncate long descriptions to reduce LLM cost
+    if description and len(description) > 1000:
+        description = description[:1000] + "..."
+
+
     return {
         "title": title,
         "company": company,
