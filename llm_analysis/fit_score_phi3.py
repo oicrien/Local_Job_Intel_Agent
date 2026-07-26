@@ -1,46 +1,36 @@
 import json
-import re
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 from llm_analysis.ollama_client import ollama_generate
 
+PARSED = Path("data/parsed_jobs.json")
 SUMMARIES = Path("data/summaries_phi3.json")
+
 MODEL = "phi3"
 
-def score_job(job):
+def summarize_job(job):
     prompt = f"""
-Evaluate job fit for a candidate with this background:
+Summarize this job posting in 5 short bullet points:
 
-- Reliability engineering
-- Product integrity
-- Physical chemistry
-- Hardware troubleshooting
-- AI/ML engineering interest
-- Nuclear safety & fusion operations interest
-
-Job summary:
-{job.get('summary_phi3')}
-
-Provide:
-Score: <0-100>
-Explanation: <3–6 sentences>
+Title: {job.get('title')}
+Company: {job.get('company')}
+Location: {job.get('location')}
+Description:
+{job.get('description')}
 """
-    response = ollama_generate(MODEL, prompt)
-
-    match = re.search(r"Score:\s*(\d{1,3})", response)
-    score = int(match.group(1)) if match else None
-
-    return score, response
+    return ollama_generate(MODEL, prompt)
 
 def main():
-    jobs = json.load(open(SUMMARIES))
+    jobs = json.load(open(PARSED))
 
-    for job in jobs:
-        score, explanation = score_job(job)
-        job["fit_score_phi3"] = score
-        job["fit_explanation_phi3"] = explanation
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        summaries = list(executor.map(summarize_job, jobs))
+
+    for job, summary in zip(jobs, summaries):
+        job["summary_phi3"] = summary
 
     json.dump(jobs, open(SUMMARIES, "w"), indent=2)
-    print("Fit scores generated using Phi‑3.")
+    print("Summaries generated using Phi‑3 (parallel).")
 
 if __name__ == "__main__":
     main()
