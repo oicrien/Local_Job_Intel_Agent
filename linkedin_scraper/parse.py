@@ -111,6 +111,45 @@ def parse_all_jobs(raw_data):
         if not job:
             continue
 
+        # --- Reliability filtering (title + description) ---
+        TITLE_KEYWORDS = [
+            "reliability",
+            "maintenance",
+            "asset integrity",
+            "failure analysis",
+            "condition monitoring",
+            "predictive",
+            "preventive",
+            "equipment engineer",
+            "root cause",
+            "rca",
+            "fmea",
+        ]
+
+        DESC_KEYWORDS = [
+            "reliability",
+            "maintenance",
+            "failure",
+            "root cause",
+            "rca",
+            "condition monitoring",
+            "predictive",
+            "preventive",
+            "fmea",
+            "pf curve",
+        ]
+
+        title_lower = job["title"].lower()
+        desc_lower = job["description"].lower() if job["description"] else ""
+
+        # Title must match at least one keyword
+        if not any(k in title_lower for k in TITLE_KEYWORDS):
+            continue
+
+        # Description must match at least one keyword
+        if not any(k in desc_lower for k in DESC_KEYWORDS):
+            continue
+
         # Deduplication key (title/company/location)
         key = (job["title"], job["company"], job["location"])
         if key in seen:
@@ -119,6 +158,10 @@ def parse_all_jobs(raw_data):
 
         parsed.append(job)
 
+        # Hard cap on number of jobs (easy to adjust)
+        if len(parsed) >= 60:
+            break
+            
     return parsed
 
 def save_parsed_results(parsed):
