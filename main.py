@@ -59,7 +59,8 @@ def run_summarizer():
         "phi3":    "llm_analysis/summarize_phi3.py"
     }.get(MODEL, "llm_analysis/summarize.py")
 
-    subprocess.run(["python", script], check=True)
+    subprocess.run(["python", "-m", script.replace("/", ".").replace(".py", "")], check=True)
+
 
     if SUMMARIES.exists():
         print(f"Summaries saved to {SUMMARIES}")
