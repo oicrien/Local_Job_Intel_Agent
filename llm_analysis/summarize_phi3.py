@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 from llm_analysis.ollama_client import ollama_generate
 
 PARSED = Path("data/parsed_jobs.json")
@@ -21,14 +22,15 @@ Description:
 
 def main():
     jobs = json.load(open(PARSED))
-    summaries = []
 
-    for job in jobs:
-        job["summary_phi3"] = summarize_job(job)
-        summaries.append(job)
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        summaries = list(executor.map(summarize_job, jobs))
 
-    json.dump(summaries, open(SUMMARIES, "w"), indent=2)
-    print("Summaries generated using Phi‑3.")
+    for job, summary in zip(jobs, summaries):
+        job["summary_phi3"] = summary
+
+    json.dump(jobs, open(SUMMARIES, "w"), indent=2)
+    print("Summaries generated using Phi‑3 (parallel).")
 
 if __name__ == "__main__":
     main()
