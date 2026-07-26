@@ -53,7 +53,7 @@ def parse_job_html(html_block):
         description = safe_select(".job-details__main-content")
 
     # Extract only the relevant part of the description after key headers
-if description:
+    if description:
         lowered = description.lower()
     
         section_headers = [
@@ -87,17 +87,16 @@ if description:
             description = description[:MAX_DESC_LEN] + "..."
 
 
-        # Skip malformed entries
-        if not title or not company or not location:
-            return None
-    
-        return {
-            "title": title,
-            "company": company,
-            "location": location,
-            "description": description,
-        }
+    # Skip malformed entries
+    if not title or not company or not location:
+        return None
 
+    return {
+        "title": title,
+        "company": company,
+        "location": location,
+        "description": description,
+    }
 
 def parse_all_jobs(raw_data):
     parsed = []
