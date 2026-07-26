@@ -20,7 +20,8 @@ def generate_latex():
 
     job_entries = ""
     for title, company, location, score in jobs:
-        job_entries += f"\\item {title} — {company} ({location}) (Fit Score: {score:.2f})\n"
+        job_entries += f"\\item {title} — {company} ({location}) (Fit Score: {f'{score:.2f}' if score is not None else 'N/A'})\n"
+
 
     template = TEMPLATE_PATH.read_text()
     latex_output = template.replace("{{JOB_LIST}}", job_entries)
