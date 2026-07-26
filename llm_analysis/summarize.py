@@ -1,61 +1,34 @@
 import json
 from pathlib import Path
+from llm_analysis.ollama_client import ollama_generate
 
 PARSED = Path("data/parsed_jobs.json")
 SUMMARIES = Path("data/summaries.json")
 
-def load_parsed_jobs():
-    if not PARSED.exists():
-        raise FileNotFoundError(f"Parsed job file not found: {PARSED}")
-    with PARSED.open("r", encoding="utf-8") as f:
-        return json.load(f)
+MODEL = "phi3"   # or qwen2.5:3b or mistral:7b-instruct-q4_K_M
 
-def local_summary(job):
-    """
-    Lightweight summarizer stub.
-    Replace this with a real LLM call later.
-    """
-    title = job.get("title") or "Unknown role"
-    company = job.get("company") or "Unknown company"
-    location = job.get("location") or "Unknown location"
-    description = job.get("description") or ""
+def summarize_job(job):
+    prompt = f"""
+Summarize the following job posting in 5 bullet points:
 
-    summary = (
-        f"{title} at {company} in {location}. "
-        f"Key details: {description[:200]}..."
-    )
-
-    return summary
-
-def summarize_all(jobs):
-    summaries = []
-    for job in jobs:
-        summaries.append({
-            "source": job.get("source", "linkedin"),
-            "title": job.get("title"),
-            "company": job.get("company"),
-            "location": job.get("location"),
-            "summary": local_summary(job)
-        })
-    return summaries
-
-def save_summaries(summaries):
-    SUMMARIES.parent.mkdir(parents=True, exist_ok=True)
-    with SUMMARIES.open("w", encoding="utf-8") as f:
-        json.dump(summaries, f, indent=2)
-    print(f"Saved summaries to {SUMMARIES}")
+Title: {job.get('title')}
+Company: {job.get('company')}
+Location: {job.get('location')}
+Description:
+{job.get('description')}
+"""
+    return ollama_generate(MODEL, prompt)
 
 def main():
-    print("Loading parsed jobs...")
-    jobs = load_parsed_jobs()
+    jobs = json.load(open(PARSED))
+    summaries = []
 
-    print(f"Generating summaries for {len(jobs)} jobs...")
-    summaries = summarize_all(jobs)
+    for job in jobs:
+        summary = summarize_job(job)
+        job["summary"] = summary
+        summaries.append(job)
 
-    print("Saving summaries...")
-    save_summaries(summaries)
-
-    print("Summarization complete.")
+    json.dump(summaries, open(SUMMARIES, "w"), indent=2)
 
 if __name__ == "__main__":
     main()
