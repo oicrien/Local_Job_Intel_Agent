@@ -4,6 +4,10 @@ from pathlib import Path
 # --- DB imports (these are correct for your repo) ---
 from storage.db import init_db, get_connection
 
+# --- MODEL SELECTION ---
+# Options: "default", "mistral", "qwen2", "phi3"
+MODEL = "mistral"   # <-- change this to switch models
+
 # --- Paths for pipeline outputs ---
 RAW = Path("data/raw_search_results.json")
 PARSED = Path("data/parsed_jobs.json")
@@ -26,17 +30,34 @@ def run_parser():
     if PARSED.exists():
         print(f"Parsed job data saved to {PARSED}")
 
-# --- STEP 3: Summaries ---
+# --- STEP 3: Summaries (model‑aware) ---
 def run_summarizer():
     print("\n=== STEP 3: Summarizing jobs ===")
-    subprocess.run(["python", "llm_analysis/summarize.py"], check=True)
+
+    script = {
+        "default": "llm_analysis/summarize.py",
+        "mistral": "llm_analysis/summarize_mistral.py",
+        "qwen2":   "llm_analysis/summarize_qwen2.py",
+        "phi3":    "llm_analysis/summarize_phi3.py"
+    }.get(MODEL, "llm_analysis/summarize.py")
+
+    subprocess.run(["python", script], check=True)
+
     if SUMMARIES.exists():
         print(f"Summaries saved to {SUMMARIES}")
 
-# --- STEP 4: Fit scoring ---
+# --- STEP 4: Fit scoring (model‑aware) ---
 def run_fit_score():
     print("\n=== STEP 4: Scoring job fit ===")
-    subprocess.run(["python", "llm_analysis/fit_score.py"], check=True)
+
+    script = {
+        "default": "llm_analysis/fit_score.py",
+        "mistral": "llm_analysis/fit_score_mistral.py",
+        "qwen2":   "llm_analysis/fit_score_qwen2.py",
+        "phi3":    "llm_analysis/fit_score_phi3.py"
+    }.get(MODEL, "llm_analysis/fit_score.py")
+
+    subprocess.run(["python", script], check=True)
     print("Fit scores generated.")
 
 # --- STEP 5: Markdown report ---
@@ -72,7 +93,6 @@ def ingest_jobs():
     conn = get_connection()
     cur = conn.cursor()
 
-    # Load parsed jobs
     import json
     parsed = json.load(open(PARSED))
 
