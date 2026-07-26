@@ -9,18 +9,36 @@ OUTPUT = Path("data/raw_search_results.json")
 EMAIL = os.getenv("LINKEDIN_EMAIL")
 PASSWORD = os.getenv("LINKEDIN_PASSWORD")
 
+def linkedin_login(page):
+    print("Logging into LinkedIn...")
+
+    page.goto("https://www.linkedin.com/login", timeout=60000)
+    page.wait_for_timeout(3000)
+
+    page.fill("input#username", EMAIL)
+    page.fill("input#password", PASSWORD)
+
+    page.click("button[type='submit']")
+    page.wait_for_timeout(5000)
+
+    if "feed" in page.url or "jobs" in page.url:
+        print("Login successful.")
+    else:
+        print("Login may have failed — continuing anyway.")
+
 def scrape_linkedin_jobs(query="Reliability Engineer", location="Canada", pages=5):
     results = []
-    seen = set()  # Deduplication set
+    seen = set()
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False)
         page = browser.new_page()
 
+        linkedin_login(page)
+
         for page_num in range(pages):
             start = page_num * 25
 
-            # Build LinkedIn job search URL with pagination
             search_url = (
                 "https://www.linkedin.com/jobs/search/?keywords="
                 + query.replace(" ", "%20")
@@ -32,15 +50,12 @@ def scrape_linkedin_jobs(query="Reliability Engineer", location="Canada", pages=
             print(f"\nNavigating to page {page_num+1}/{pages}: {search_url}")
             page.goto(search_url, timeout=60000)
 
-            # Allow initial job cards to load
             page.wait_for_timeout(5000)
 
-            # Scroll to load dynamic job cards
             for _ in range(8):
                 page.mouse.wheel(0, 4000)
                 page.wait_for_timeout(1500)
 
-            # Correct LinkedIn job card selector (2024–2026 DOM)
             job_cards = page.query_selector_all("div.base-card")
 
             print(f"Found {len(job_cards)} job cards on page {page_num+1}")
@@ -48,11 +63,9 @@ def scrape_linkedin_jobs(query="Reliability Engineer", location="Canada", pages=
             for card in job_cards:
                 html = card.inner_html()
 
-                # Skip empty or malformed cards
                 if not html or len(html.strip()) < 50:
                     continue
 
-                # Deduplication key
                 key = hash(html)
                 if key in seen:
                     continue
@@ -65,18 +78,15 @@ def scrape_linkedin_jobs(query="Reliability Engineer", location="Canada", pages=
     print(f"\nValid job cards after filtering: {len(results)}")
     return results
 
-
 def save_results(results):
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     with OUTPUT.open("w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
     print(f"Saved raw results to {OUTPUT}")
 
-
 def main():
     results = scrape_linkedin_jobs()
     save_results(results)
-
 
 if __name__ == "__main__":
     main()
