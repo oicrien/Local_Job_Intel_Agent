@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from llm_analysis.ollama_client import ollama_generate
+from tqdm import tqdm
 
 PARSED = Path("data/parsed_jobs.json")
 SUMMARIES = Path("data/summaries_qwen2.json")
@@ -24,7 +25,12 @@ def main():
     jobs = json.load(open(PARSED))
 
     with ThreadPoolExecutor(max_workers=8) as executor:
-        summaries = list(executor.map(summarize_job, jobs))
+        summaries = list(tqdm(
+            executor.map(summarize_job, jobs),
+            total=len(jobs),
+            desc="Summarizing jobs"
+        ))
+
 
     for job, summary in zip(jobs, summaries):
         job["summary_qwen2"] = summary
