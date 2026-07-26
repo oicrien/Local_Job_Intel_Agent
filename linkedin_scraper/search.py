@@ -63,21 +63,23 @@ def scrape_linkedin_jobs(query="Reliability Engineer", location="Canada", pages=
 
             page.wait_for_timeout(5000)
 
+            # Scroll to load more jobs
             for _ in range(8):
                 page.mouse.wheel(0, 4000)
                 page.wait_for_timeout(1500)
-
-             job_cards = page.query_selector_all(
+            
+            # Resilient job-card selector
+            job_cards = page.query_selector_all(
                 "a[href*='/jobs/view/'], [data-job-id]"
             )
-    
+            
             jobs = []
-    
+            
             for card in job_cards:
                 link = card.get_attribute("href")
                 if link and "/jobs/view/" in link:
                     jobs.append(link)
-
+            
             print(f"Found {len(job_cards)} job cards on page {page_num+1}")
 
             for card in job_cards:
