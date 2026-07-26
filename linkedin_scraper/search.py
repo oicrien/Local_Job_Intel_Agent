@@ -1,18 +1,37 @@
 import json
+import os
+import time
 from pathlib import Path
 from playwright.sync_api import sync_playwright
-import time
 
 OUTPUT = Path("data/raw_search_results.json")
 
+EMAIL = os.getenv("LINKEDIN_EMAIL")
+PASSWORD = os.getenv("LINKEDIN_PASSWORD")
+
 def scrape_linkedin_jobs(query="Reliability Engineer", location="Canada"):
+    if not EMAIL or not PASSWORD:
+        raise RuntimeError("Missing LINKEDIN_EMAIL or LINKEDIN_PASSWORD environment variables.")
+
     results = []
 
     with sync_playwright() as p:
-        # IMPORTANT: LinkedIn blocks headless scrapers
         browser = p.chromium.launch(headless=False)
         page = browser.new_page()
 
+        # --- Automatic Login ---
+        print("Opening LinkedIn login page...")
+        page.goto("https://www.linkedin.com/login", timeout=60000)
+
+        print("Filling login form...")
+        page.fill("input#username", EMAIL)
+        page.fill("input#password", PASSWORD)
+        page.click("button[type=submit]")
+
+        # Wait for login to complete
+        page.wait_for_timeout(5000)
+
+        # --- Navigate to job search ---
         search_url = (
             "https://www.linkedin.com/jobs/search/?keywords="
             + query.replace(" ", "%20")
@@ -23,15 +42,12 @@ def scrape_linkedin_jobs(query="Reliability Engineer", location="Canada"):
         print(f"Navigating to {search_url}")
         page.goto(search_url, timeout=60000)
 
-        print("If LinkedIn asks you to log in, do it manually.")
-        time.sleep(20)  # allow login + JS load
-
-        # Scroll to load dynamic job cards
+        # --- Scroll to load dynamic job cards ---
         for _ in range(6):
             page.mouse.wheel(0, 4000)
             page.wait_for_timeout(1500)
 
-        # Updated selector — LinkedIn changed their DOM
+        # --- Correct LinkedIn job card selector ---
         job_cards = page.query_selector_all("div.base-card")
 
         print(f"Found {len(job_cards)} job cards")
