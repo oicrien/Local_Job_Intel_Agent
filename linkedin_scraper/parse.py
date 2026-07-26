@@ -34,6 +34,23 @@ def parse_job_html(html_block):
         location = safe_select(".job-card-container__metadata-item")
     if not description:
         description = safe_select(".job-card-list__description")
+    # Additional description selectors (LinkedIn uses many variants)
+    if not description:
+        description = safe_select(".job-search-card__description")
+    if not description:
+        description = safe_select(".job-card-container__description")
+    if not description:
+        description = safe_select(".job-details__content")
+    if not description:
+        description = safe_select(".job-details__section")
+    if not description:
+        description = safe_select(".description__text")
+    if not description:
+        description = safe_select(".job-details__body")
+    if not description:
+        description = safe_select(".job-details__text")
+    if not description:
+        description = safe_select(".job-details__main-content")
 
     # Skip malformed entries
     if not title or not company or not location:
