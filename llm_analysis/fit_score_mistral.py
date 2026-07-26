@@ -27,7 +27,7 @@ Explanation: <3–6 sentences>
     response = ollama_generate(MODEL, prompt)
 
     match = re.search(r"Score:\s*(\d{1,3})", response)
-    score = int(match.group(1)) if match else 50
+    score = int(match.group(1)) if match else None
 
     return score, response
 
