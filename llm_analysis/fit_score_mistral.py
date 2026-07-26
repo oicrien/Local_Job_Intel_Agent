@@ -3,6 +3,7 @@ import re
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from llm_analysis.ollama_client import ollama_generate
+from tqdm import tqdm
 
 SUMMARIES = Path("data/summaries_mistral.json")
 MODEL = "mistral:7b-instruct-q4_K_M"
@@ -36,7 +37,12 @@ def main():
     jobs = json.load(open(SUMMARIES))
 
     with ThreadPoolExecutor(max_workers=8) as executor:
-        results = list(executor.map(score_job, jobs))
+        results = list(tqdm(
+            executor.map(score_job, jobs),
+            total=len(jobs),
+            desc="Scoring job fit"
+        ))
+
 
     for job, (score, explanation) in zip(jobs, results):
         job["fit_score_mistral"] = score
