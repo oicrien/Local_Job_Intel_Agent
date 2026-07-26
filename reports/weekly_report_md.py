@@ -17,7 +17,9 @@ def generate_markdown():
     lines = ["# Weekly Job Intelligence Report\n"]
 
     for title, company, location, score in jobs:
-        lines.append(f"- **{title}** — {company} ({location}) — Fit Score: {score:.2f}")
+        safe_score = score if isinstance(score, (int, float)) else 0
+        lines.append(f"- **{title}** — {company} ({location}) — Fit Score: {safe_score:.2f}")
+
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_PATH.write_text("\n".join(lines))
