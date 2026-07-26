@@ -5,8 +5,26 @@ from pathlib import Path
 from storage.db import init_db, get_connection
 
 # --- MODEL SELECTION ---
-# Options: "default", "mistral", "qwen2", "phi3"
-MODEL = "mistral"   # <-- change this to switch models
+def select_model():
+    print("\n=== MODEL SELECTION ===")
+    print("Choose which LLM model to use:")
+    print("1. Mistral")
+    print("2. Qwen2")
+    print("3. Phi3")
+    print("4. Default (summarize.py + fit_score.py)")
+
+    choice = input("Enter 1, 2, 3, or 4: ").strip()
+
+    return {
+        "1": "mistral",
+        "2": "qwen2",
+        "3": "phi3",
+        "4": "default"
+    }.get(choice, "default")
+
+MODEL = select_model()
+print(f"Using model: {MODEL}")
+
 
 # --- Paths for pipeline outputs ---
 RAW = Path("data/raw_search_results.json")
