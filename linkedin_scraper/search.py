@@ -22,14 +22,20 @@ def scrape_linkedin_jobs(query="Reliability Engineer", location="Canada"):
         # --- Automatic Login ---
         print("Opening LinkedIn login page...")
         page.goto("https://www.linkedin.com/login", timeout=60000)
-
+        
+        # Wait for the login form to appear
+        page.wait_for_selector('input[name="session_key"]', timeout=20000)
+        
         print("Filling login form...")
-        page.fill("input#username", EMAIL)
-        page.fill("input#password", PASSWORD)
-        page.click("button[type=submit]")
-
+        page.fill('input[name="session_key"]', EMAIL)
+        page.fill('input[name="session_password"]', PASSWORD)
+        
+        # Click the sign-in button
+        page.click('button[type="submit"]')
+        
         # Wait for login to complete
         page.wait_for_timeout(5000)
+
 
         # --- Navigate to job search ---
         search_url = (
