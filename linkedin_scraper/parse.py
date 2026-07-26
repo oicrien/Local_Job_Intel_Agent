@@ -87,16 +87,16 @@ if description:
             description = description[:MAX_DESC_LEN] + "..."
 
 
-    # Skip malformed entries
-    if not title or not company or not location:
-        return None
-
-    return {
-        "title": title,
-        "company": company,
-        "location": location,
-        "description": description,
-    }
+        # Skip malformed entries
+        if not title or not company or not location:
+            return None
+    
+        return {
+            "title": title,
+            "company": company,
+            "location": location,
+            "description": description,
+        }
 
 
 def parse_all_jobs(raw_data):
