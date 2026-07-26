@@ -69,23 +69,22 @@ if description:
             "what you will do",
             "role"
         ]
+    
+        extracted = None
+        for header in section_headers:
+            idx = lowered.find(header)
+            if idx != -1:
+                extracted = description[idx + len(header):].strip()
+                break
 
-    extracted = None
-    for header in section_headers:
-        idx = lowered.find(header)
-        if idx != -1:
-            extracted = description[idx + len(header):].strip()
-            break
-
-    # Use extracted section if found
-    if extracted:
-        description = extracted
-
-    # Truncate long descriptions to reduce LLM cost
-    MAX_DESC_LEN = 1000
-    if description and len(description) > MAX_DESC_LEN:
-        description = description[:MAX_DESC_LEN] + "..."
-
+        # Use extracted section if found
+        if extracted:
+            description = extracted
+    
+        # Truncate long descriptions to reduce LLM cost
+        MAX_DESC_LEN = 1000
+        if description and len(description) > MAX_DESC_LEN:
+            description = description[:MAX_DESC_LEN] + "..."
 
 
     # Skip malformed entries
