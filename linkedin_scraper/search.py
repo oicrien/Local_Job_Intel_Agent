@@ -102,8 +102,12 @@ def scrape_linkedin_jobs(query="Reliability Engineer", location="Canada", pages=
     results = []
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch_persistent_context(
+            "/home/twig/.playwright-profile",
+            headless=False
+        )
         page = browser.new_page()
+
 
         linkedin_login(page)
 
