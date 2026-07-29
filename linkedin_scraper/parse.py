@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from bs4 import BeautifulSoup
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -16,7 +17,7 @@ PARSED_RESULTS = Path("data/parsed_jobs.json")
 
 
 # -------------------------
-# Load raw JSON results
+# Load raw HTML results
 # -------------------------
 def load_raw_results():
     if not RAW_RESULTS.exists():
@@ -26,36 +27,60 @@ def load_raw_results():
 
 
 # -------------------------
-# Parse a single job JSON blob
+# Parse a single job PAGE (HTML)
 # -------------------------
-def parse_job_json(job_entry):
+def parse_job_page(job_entry):
     """
     job_entry structure:
     {
-        "job_id": "123456",
-        "data": { ... LinkedIn jobPosting JSON ... }
+        "job_id": "...",
+        "html": "<!DOCTYPE html>..."
     }
     """
 
-    job_json = job_entry.get("data")
-    if not job_json:
+    html = job_entry.get("html")
+    if not html:
         return None
+
+    soup = BeautifulSoup(html, "html.parser")
 
     # -----------------------------
     # Extract basic fields
     # -----------------------------
-    title = job_json.get("title", "N/A")
-    company = job_json.get("companyName", "N/A")
+    def safe_text(selector):
+        el = soup.select_one(selector)
+        return el.get_text(strip=True) if el else None
 
-    # Location is nested
-    location = job_json.get("formattedLocation", "")
+    # Job title
+    title = safe_text("h1.top-card-layout__title")
+    if not title:
+        title = safe_text("h1.top-card__title")  # fallback
+
+    # Company name
+    company = safe_text("a.top-card-layout__company-url")
+    if not company:
+        company = safe_text("span.top-card-layout__company-name")
+    if not company:
+        company = safe_text("a.topcard__org-name-link")  # fallback
+
+    # Location
+    location = safe_text("span.top-card-layout__location")
     if not location:
-        loc_obj = job_json.get("jobPostingLocation", {})
-        location = loc_obj.get("city", "") or loc_obj.get("country", "")
+        location = safe_text("span.topcard__flavor--bullet")  # fallback
 
-    # Full description HTML
-    description_html = job_json.get("description", "") or ""
+    # Description (full HTML)
+    desc_el = soup.select_one("div.description__text")
+    if not desc_el:
+        desc_el = soup.select_one("section.description")  # fallback
+
+    description_html = desc_el.decode_contents() if desc_el else ""
     description_text = strip_html(description_html)
+
+    # -----------------------------
+    # Skip malformed entries
+    # -----------------------------
+    if not title or not company or not location:
+        return None
 
     # -----------------------------
     # Semantic fields
@@ -64,12 +89,6 @@ def parse_job_json(job_entry):
     job_level = parse_job_level(description_text)
     industry = parse_company_industry(description_text)
     remote = is_job_remote(title, description_text, location)
-
-    # -----------------------------
-    # Skip malformed entries
-    # -----------------------------
-    if title == "N/A" or company == "N/A" or location == "":
-        return None
 
     # -----------------------------
     # Return structured job object
@@ -91,8 +110,6 @@ def parse_job_json(job_entry):
 # Strip HTML tags from description
 # -------------------------
 def strip_html(html):
-    """Convert LinkedIn's HTML description into plain text."""
-    from bs4 import BeautifulSoup
     soup = BeautifulSoup(html, "html.parser")
     return soup.get_text(" ", strip=True)
 
@@ -105,7 +122,7 @@ def parse_all_jobs(raw_data):
     seen = set()
 
     for entry in raw_data:
-        job = parse_job_json(entry)
+        job = parse_job_page(entry)
         if not job:
             continue
 
