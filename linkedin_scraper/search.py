@@ -124,7 +124,15 @@ def scrape_linkedin_jobs(query="Reliability Engineer", location="Canada", pages=
                 print(f"Fetching job page: {job_url}")
 
                 page.goto(job_url, timeout=60000)
-                page.wait_for_timeout(3000)
+
+                # Wait for job content to actually load
+                try:
+                    page.wait_for_selector("h1.top-card-layout__title", timeout=15000)
+                except:
+                    print("⚠️ Job content did not load — saving shell HTML anyway")
+                
+                html = page.content()
+
 
                 html = page.content()
                 results.append({"html": html, "job_id": job_id})
