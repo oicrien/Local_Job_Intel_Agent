@@ -16,18 +16,33 @@ PASSWORD = os.getenv("LINKEDIN_PASSWORD")
 # LinkedIn Login (Playwright)
 # -------------------------
 def linkedin_login(page):
+    # Go to login page
     page.goto("https://www.linkedin.com/login", timeout=60000)
     page.wait_for_timeout(2000)
 
-    # Already logged in
+    # If LinkedIn auto-redirected you to feed or jobs, you're already logged in
     if "feed" in page.url or "jobs" in page.url:
+        print("Already logged in — skipping login.")
+        return
+
+    # Check if login form exists
+    try:
+        page.wait_for_selector('input[name="session_key"]', timeout=5000)
+    except:
+        print("Login form not found — assuming already logged in.")
         return
 
     # Perform login
+    print("Logging in with credentials...")
     page.fill('input[name="session_key"]', EMAIL)
     page.fill('input[name="session_password"]', PASSWORD)
     page.click('button[type="submit"]')
     page.wait_for_timeout(5000)
+
+    if "feed" in page.url or "jobs" in page.url:
+        print("Login successful.")
+    else:
+        print("Login may have failed — continuing anyway.")
 
 
 # -------------------------
