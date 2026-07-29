@@ -25,25 +25,26 @@ def load_raw_results():
 
 def parse_job_html(html_block):
     """Parse a single LinkedIn job HTML block into structured fields."""
-    soup = BeautifulSoup(html_block, "html.parser")
-    
-    job_type = parse_job_type(soup)
-    job_level = parse_job_level(soup)
-    industry = parse_company_industry(soup)
-    remote = is_job_remote(title, description, location)
 
+    # Skip malformed or empty HTML
+    if not html_block or "<html" not in html_block.lower():
+        return None
+
+    soup = BeautifulSoup(html_block, "html.parser")
 
     def safe_select(selector):
         el = soup.select_one(selector)
         return el.get_text(strip=True) if el else None
 
-    # Updated LinkedIn selectors (2024–2026)
+    # -----------------------------
+    # Extract basic fields FIRST
+    # -----------------------------
     title = safe_select(".base-search-card__title")
     company = safe_select(".base-search-card__subtitle")
     location = safe_select(".job-search-card__location")
     description = safe_select(".job-search-card__snippet")
 
-    # Fallback selectors (older DOM)
+    # Fallback selectors
     if not title:
         title = safe_select(".job-card-list__title")
     if not company:
@@ -52,7 +53,8 @@ def parse_job_html(html_block):
         location = safe_select(".job-card-container__metadata-item")
     if not description:
         description = safe_select(".job-card-list__description")
-    # Additional description selectors (LinkedIn uses many variants)
+
+    # Additional description fallbacks
     if not description:
         description = safe_select(".job-search-card__description")
     if not description:
@@ -70,10 +72,32 @@ def parse_job_html(html_block):
     if not description:
         description = safe_select(".job-details__main-content")
 
-    # Extract only the relevant part of the description after key headers
+    # -----------------------------
+    # Safe defaults for missing fields
+    # -----------------------------
+    if not title:
+        title = "N/A"
+    if not company:
+        company = "N/A"
+    if not location:
+        location = ""
+    if not description:
+        description = ""
+
+    # -----------------------------
+    # Extract semantic fields AFTER basics exist
+    # -----------------------------
+    job_type = parse_job_type(soup)
+    job_level = parse_job_level(soup)
+    industry = parse_company_industry(soup)
+    remote = is_job_remote(title, description, location)
+
+    # -----------------------------
+    # Description cleanup
+    # -----------------------------
     if description:
         lowered = description.lower()
-    
+
         section_headers = [
             "requirements",
             "qualifications",
@@ -87,7 +111,7 @@ def parse_job_html(html_block):
             "what you will do",
             "role"
         ]
-    
+
         extracted = None
         for header in section_headers:
             idx = lowered.find(header)
@@ -95,20 +119,22 @@ def parse_job_html(html_block):
                 extracted = description[idx + len(header):].strip()
                 break
 
-        # Use extracted section if found
         if extracted:
             description = extracted
-    
-        # Truncate long descriptions to reduce LLM cost
+
         MAX_DESC_LEN = 1000
-        if description and len(description) > MAX_DESC_LEN:
+        if len(description) > MAX_DESC_LEN:
             description = description[:MAX_DESC_LEN] + "..."
 
-
+    # -----------------------------
     # Skip malformed entries
-    if not title or not company or not location:
+    # -----------------------------
+    if title == "N/A" or company == "N/A" or location == "":
         return None
 
+    # -----------------------------
+    # Return structured job object
+    # -----------------------------
     return {
         "title": title,
         "company": company,
@@ -119,6 +145,7 @@ def parse_job_html(html_block):
         "industry": industry,
         "remote": remote
     }
+
 
 def parse_all_jobs(raw_data):
     parsed = []
