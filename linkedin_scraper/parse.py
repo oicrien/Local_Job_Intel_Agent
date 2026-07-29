@@ -2,6 +2,14 @@ import json
 from pathlib import Path
 from bs4 import BeautifulSoup
 
+from linkedin_scraper.semantic_parsers import (
+    parse_job_type,
+    parse_job_level,
+    parse_company_industry,
+    is_job_remote
+)
+
+
 RAW_RESULTS = Path("data/raw_search_results.json")
 PARSED_RESULTS = Path("data/parsed_jobs.json")
 
@@ -14,6 +22,12 @@ def load_raw_results():
 def parse_job_html(html_block):
     """Parse a single LinkedIn job HTML block into structured fields."""
     soup = BeautifulSoup(html_block, "html.parser")
+    
+    job_type = parse_job_type(soup)
+    job_level = parse_job_level(soup)
+    industry = parse_company_industry(soup)
+    remote = is_job_remote(title, description, location)
+
 
     def safe_select(selector):
         el = soup.select_one(selector)
@@ -96,6 +110,10 @@ def parse_job_html(html_block):
         "company": company,
         "location": location,
         "description": description,
+        "job_type": job_type,
+        "job_level": job_level,
+        "industry": industry,
+        "remote": remote
     }
 
 def parse_all_jobs(raw_data):
