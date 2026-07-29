@@ -3,6 +3,7 @@ import os
 import time
 from pathlib import Path
 from playwright.sync_api import sync_playwright
+from bs4 import BeautifulSoup
 
 OUTPUT = Path("data/raw_search_results.json")
 
@@ -10,36 +11,42 @@ EMAIL = os.getenv("LINKEDIN_EMAIL")
 PASSWORD = os.getenv("LINKEDIN_PASSWORD")
 
 def linkedin_login(page):
-    print("Logging into LinkedIn...")
-
-    # Go to login page
     page.goto("https://www.linkedin.com/login", timeout=60000)
     page.wait_for_timeout(2000)
 
-    # If redirected to feed or jobs, you're already logged in
     if "feed" in page.url or "jobs" in page.url:
-        print("Already logged in — skipping login.")
         return
 
-    # Otherwise perform login
-    try:
-        page.fill('input[name="session_key"]', EMAIL)
-        page.fill('input[name="session_password"]', PASSWORD)
-        page.click('button[type="submit"]')
-        page.wait_for_timeout(5000)
-    except Exception as e:
-        print(f"Login form not found, skipping login. Reason: {e}")
-        return
+    page.fill('input[name="session_key"]', EMAIL)
+    page.fill('input[name="session_password"]', PASSWORD)
+    page.click('button[type="submit"]')
+    page.wait_for_timeout(5000)
 
-    if "feed" in page.url or "jobs" in page.url:
-        print("Login successful.")
-    else:
-        print("Login may have failed — continuing anyway.")
+
+def extract_job_ids(page):
+    """Extract job IDs from LinkedIn's JSON blobs."""
+    content = page.content()
+    soup = BeautifulSoup(content, "html.parser")
+
+    job_ids = set()
+
+    # Look for JSON blobs
+    for script in soup.find_all("script"):
+        if script.string and "jobPosting" in script.string:
+            try:
+                data = json.loads(script.string)
+                if isinstance(data, dict) and "jobPosting" in data:
+                    job_id = data["jobPosting"].get("identifier", {}).get("value")
+                    if job_id:
+                        job_ids.add(job_id)
+            except:
+                continue
+
+    return list(job_ids)
 
 
 def scrape_linkedin_jobs(query="Reliability Engineer", location="Canada", pages=5):
     results = []
-    seen = set()
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False)
@@ -51,54 +58,33 @@ def scrape_linkedin_jobs(query="Reliability Engineer", location="Canada", pages=
             start = page_num * 25
 
             search_url = (
-                "https://www.linkedin.com/jobs/search/?keywords="
-                + query.replace(" ", "%20")
-                + "&location="
-                + location.replace(" ", "%20")
-                + f"&start={start}"
+                f"https://www.linkedin.com/jobs/search/?keywords={query.replace(' ', '%20')}"
+                f"&location={location.replace(' ', '%20')}&start={start}"
             )
 
             print(f"\nNavigating to page {page_num+1}/{pages}: {search_url}")
             page.goto(search_url, timeout=60000)
-
             page.wait_for_timeout(5000)
 
-            # Scroll to load more jobs
-            for _ in range(8):
-                page.mouse.wheel(0, 4000)
-                page.wait_for_timeout(1500)
-            
-            # Resilient job-card selector
-            job_cards = page.query_selector_all(
-                "a[href*='/jobs/view/'], [data-job-id]"
-            )
-            
-            jobs = []
-            
-            for card in job_cards:
-                link = card.get_attribute("href")
-                if link and "/jobs/view/" in link:
-                    jobs.append(link)
-            
-            print(f"Found {len(job_cards)} job cards on page {page_num+1}")
+            job_ids = extract_job_ids(page)
+            print(f"Found {len(job_ids)} job IDs on page {page_num+1}")
 
-            for card in job_cards:
-                html = card.inner_html()
+            # Fetch each job page
+            for job_id in job_ids:
+                job_url = f"https://www.linkedin.com/jobs/view/{job_id}"
+                print(f"Fetching job page: {job_url}")
 
-                if not html or len(html.strip()) < 50:
-                    continue
+                page.goto(job_url, timeout=60000)
+                page.wait_for_timeout(3000)
 
-                key = hash(html)
-                if key in seen:
-                    continue
-                seen.add(key)
-
-                results.append({"html": html})
+                html = page.content()
+                results.append({"html": html, "job_id": job_id})
 
         browser.close()
 
-    print(f"\nValid job cards after filtering: {len(results)}")
+    print(f"\nTotal job pages fetched: {len(results)}")
     return results
+
 
 def save_results(results):
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
@@ -106,9 +92,11 @@ def save_results(results):
         json.dump(results, f, indent=2)
     print(f"Saved raw results to {OUTPUT}")
 
+
 def main():
     results = scrape_linkedin_jobs()
     save_results(results)
+
 
 if __name__ == "__main__":
     main()
