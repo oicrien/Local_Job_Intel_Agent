@@ -87,7 +87,7 @@ def fetch_job_ids_via_guest_api(query, location, start=0):
 
 
 # -------------------------
-# Main Scraper (Guest API only)
+# Main Scraper (HTML job pages)
 # -------------------------
 def scrape_linkedin_jobs(query="Reliability Engineer", location="Canada", pages=5):
     results = []
@@ -108,16 +108,25 @@ def scrape_linkedin_jobs(query="Reliability Engineer", location="Canada", pages=
             job_ids = fetch_job_ids_via_guest_api(query, location, start=start)
             print(f"Found {len(job_ids)} job IDs on page {page_num+1}")
 
-            # Fetch job details via guest API (NOT Playwright)
+            # Fetch full job page HTML using Playwright
             for job_id in job_ids:
-                api_url = f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{job_id}"
-                print(f"Fetching job details: {api_url}")
+                job_url = f"https://www.linkedin.com/jobs/view/{job_id}"
+                print(f"Fetching job page: {job_url}")
 
                 try:
-                    job_json = requests.get(api_url, timeout=10).json()
-                    results.append({"job_id": job_id, "data": job_json})
+                    page.goto(job_url, timeout=60000)
+
+                    # Wait for job content to load
+                    try:
+                        page.wait_for_selector("h1.top-card-layout__title", timeout=15000)
+                    except:
+                        print(f"⚠️ Job content did not load for {job_id} — saving shell HTML")
+
+                    html = page.content()
+                    results.append({"job_id": job_id, "html": html})
+
                 except Exception as e:
-                    print(f"Failed to fetch job {job_id}: {e}")
+                    print(f"Failed to fetch job page {job_id}: {e}")
 
         browser.close()
 
