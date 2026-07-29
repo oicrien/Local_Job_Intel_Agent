@@ -1,10 +1,8 @@
 import json
 from pathlib import Path
-from bs4 import BeautifulSoup
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-
 
 from linkedin_scraper.semantic_parsers import (
     parse_job_type,
@@ -13,118 +11,59 @@ from linkedin_scraper.semantic_parsers import (
     is_job_remote
 )
 
-
 RAW_RESULTS = Path("data/raw_search_results.json")
 PARSED_RESULTS = Path("data/parsed_jobs.json")
 
+
+# -------------------------
+# Load raw JSON results
+# -------------------------
 def load_raw_results():
     if not RAW_RESULTS.exists():
         raise FileNotFoundError(f"Raw results file not found: {RAW_RESULTS}")
     with RAW_RESULTS.open("r", encoding="utf-8") as f:
         return json.load(f)
 
-def parse_job_html(html_block):
-    """Parse a single LinkedIn job HTML block into structured fields."""
 
-    # Skip malformed or empty HTML
-    if not html_block or "<html" not in html_block.lower():
+# -------------------------
+# Parse a single job JSON blob
+# -------------------------
+def parse_job_json(job_entry):
+    """
+    job_entry structure:
+    {
+        "job_id": "123456",
+        "data": { ... LinkedIn jobPosting JSON ... }
+    }
+    """
+
+    job_json = job_entry.get("data")
+    if not job_json:
         return None
 
-    soup = BeautifulSoup(html_block, "html.parser")
-
-    def safe_select(selector):
-        el = soup.select_one(selector)
-        return el.get_text(strip=True) if el else None
-
     # -----------------------------
-    # Extract basic fields FIRST
+    # Extract basic fields
     # -----------------------------
-    title = safe_select(".base-search-card__title")
-    company = safe_select(".base-search-card__subtitle")
-    location = safe_select(".job-search-card__location")
-    description = safe_select(".job-search-card__snippet")
+    title = job_json.get("title", "N/A")
+    company = job_json.get("companyName", "N/A")
 
-    # Fallback selectors
-    if not title:
-        title = safe_select(".job-card-list__title")
-    if not company:
-        company = safe_select(".job-card-container__company-name")
+    # Location is nested
+    location = job_json.get("formattedLocation", "")
     if not location:
-        location = safe_select(".job-card-container__metadata-item")
-    if not description:
-        description = safe_select(".job-card-list__description")
+        loc_obj = job_json.get("jobPostingLocation", {})
+        location = loc_obj.get("city", "") or loc_obj.get("country", "")
 
-    # Additional description fallbacks
-    if not description:
-        description = safe_select(".job-search-card__description")
-    if not description:
-        description = safe_select(".job-card-container__description")
-    if not description:
-        description = safe_select(".job-details__content")
-    if not description:
-        description = safe_select(".job-details__section")
-    if not description:
-        description = safe_select(".description__text")
-    if not description:
-        description = safe_select(".job-details__body")
-    if not description:
-        description = safe_select(".job-details__text")
-    if not description:
-        description = safe_select(".job-details__main-content")
+    # Full description HTML
+    description_html = job_json.get("description", "") or ""
+    description_text = strip_html(description_html)
 
     # -----------------------------
-    # Safe defaults for missing fields
+    # Semantic fields
     # -----------------------------
-    if not title:
-        title = "N/A"
-    if not company:
-        company = "N/A"
-    if not location:
-        location = ""
-    if not description:
-        description = ""
-
-    # -----------------------------
-    # Extract semantic fields AFTER basics exist
-    # -----------------------------
-    job_type = parse_job_type(soup)
-    job_level = parse_job_level(soup)
-    industry = parse_company_industry(soup)
-    remote = is_job_remote(title, description, location)
-
-    # -----------------------------
-    # Description cleanup
-    # -----------------------------
-    if description:
-        lowered = description.lower()
-
-        section_headers = [
-            "requirements",
-            "qualifications",
-            "job responsibilities",
-            "responsibilities",
-            "about the role",
-            "about",
-            "skills",
-            "duties",
-            "what you'll do",
-            "what you will do",
-            "role"
-        ]
-
-        extracted = None
-        for header in section_headers:
-            idx = lowered.find(header)
-            if idx != -1:
-                extracted = description[idx + len(header):].strip()
-                break
-
-        if extracted:
-            description = extracted
-
-        MAX_DESC_LEN = 1000
-        if len(description) > MAX_DESC_LEN:
-            description = description[:MAX_DESC_LEN] + "..."
+    job_type = parse_job_type(description_text)
+    job_level = parse_job_level(description_text)
+    industry = parse_company_industry(description_text)
+    remote = is_job_remote(title, description_text, location)
 
     # -----------------------------
     # Skip malformed entries
@@ -136,10 +75,11 @@ def parse_job_html(html_block):
     # Return structured job object
     # -----------------------------
     return {
+        "job_id": job_entry.get("job_id"),
         "title": title,
         "company": company,
         "location": location,
-        "description": description,
+        "description": description_text,
         "job_type": job_type,
         "job_level": job_level,
         "industry": industry,
@@ -147,59 +87,51 @@ def parse_job_html(html_block):
     }
 
 
+# -------------------------
+# Strip HTML tags from description
+# -------------------------
+def strip_html(html):
+    """Convert LinkedIn's HTML description into plain text."""
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html, "html.parser")
+    return soup.get_text(" ", strip=True)
+
+
+# -------------------------
+# Parse all jobs
+# -------------------------
 def parse_all_jobs(raw_data):
     parsed = []
-    seen = set()  # Deduplication across ALL pages
+    seen = set()
 
     for entry in raw_data:
-        html_block = entry.get("html")
-        if not html_block:
-            continue
-
-        job = parse_job_html(html_block)
+        job = parse_job_json(entry)
         if not job:
             continue
 
-        # --- Reliability filtering (title + description) ---
+        # --- Reliability filtering ---
         TITLE_KEYWORDS = [
-            "reliability",
-            "maintenance",
-            "asset integrity",
-            "failure analysis",
-            "condition monitoring",
-            "predictive",
-            "preventive",
-            "equipment engineer",
-            "root cause",
-            "rca",
-            "fmea",
+            "reliability", "maintenance", "asset integrity",
+            "failure analysis", "condition monitoring",
+            "predictive", "preventive", "equipment engineer",
+            "root cause", "rca", "fmea",
         ]
 
         DESC_KEYWORDS = [
-            "reliability",
-            "maintenance",
-            "failure",
-            "root cause",
-            "rca",
-            "condition monitoring",
-            "predictive",
-            "preventive",
-            "fmea",
-            "pf curve",
+            "reliability", "maintenance", "failure",
+            "root cause", "rca", "condition monitoring",
+            "predictive", "preventive", "fmea", "pf curve",
         ]
 
         title_lower = job["title"].lower()
-        desc_lower = job["description"].lower() if job["description"] else ""
+        desc_lower = job["description"].lower()
 
-        # Title must match at least one keyword
         if not any(k in title_lower for k in TITLE_KEYWORDS):
             continue
-
-        # Description must match at least one keyword
         if not any(k in desc_lower for k in DESC_KEYWORDS):
             continue
 
-        # Deduplication key (title/company/location)
+        # Deduplication
         key = (job["title"], job["company"], job["location"])
         if key in seen:
             continue
@@ -207,17 +139,24 @@ def parse_all_jobs(raw_data):
 
         parsed.append(job)
 
-        # Hard cap on number of jobs (easy to adjust)
         if len(parsed) >= 60:
             break
-            
+
     return parsed
 
+
+# -------------------------
+# Save parsed results
+# -------------------------
 def save_parsed_results(parsed):
     PARSED_RESULTS.parent.mkdir(parents=True, exist_ok=True)
     with PARSED_RESULTS.open("w", encoding="utf-8") as f:
         json.dump(parsed, f, indent=2)
 
+
+# -------------------------
+# Main
+# -------------------------
 def main():
     print("Loading raw search results...")
     raw_data = load_raw_results()
@@ -229,6 +168,7 @@ def main():
     save_parsed_results(parsed)
 
     print("Parsing complete.")
+
 
 if __name__ == "__main__":
     main()
