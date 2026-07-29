@@ -1,5 +1,8 @@
 import json
 from pathlib import Path
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from concurrent.futures import ThreadPoolExecutor
 from llm_analysis.ollama_client import ollama_generate
 from tqdm import tqdm
