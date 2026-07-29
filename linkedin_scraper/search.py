@@ -16,23 +16,19 @@ PASSWORD = os.getenv("LINKEDIN_PASSWORD")
 # LinkedIn Login (Playwright)
 # -------------------------
 def linkedin_login(page):
-    # Go to login page
     page.goto("https://www.linkedin.com/login", timeout=90000)
-    page.wait_for_timeout(10000)
+    page.wait_for_timeout(8000)
 
-    # If LinkedIn auto-redirected you to feed or jobs, you're already logged in
     if "feed" in page.url or "jobs" in page.url:
         print("Already logged in — skipping login.")
         return
 
-    # Check if login form exists
     try:
         page.wait_for_selector('input[name="session_key"]', timeout=5000)
     except:
         print("Login form not found — assuming already logged in.")
         return
 
-    # Perform login
     print("Logging in with credentials...")
     page.fill('input[name="session_key"]', EMAIL)
     page.fill('input[name="session_password"]', PASSWORD)
@@ -49,11 +45,6 @@ def linkedin_login(page):
 # Guest API Job ID Extractor
 # -------------------------
 def fetch_job_ids_via_guest_api(query, location, start=0):
-    """
-    Uses LinkedIn's internal guest API to reliably extract job IDs.
-    This replaces brittle DOM scraping of job cards.
-    """
-
     params = {
         "keywords": query,
         "location": location,
@@ -96,7 +87,7 @@ def fetch_job_ids_via_guest_api(query, location, start=0):
 
 
 # -------------------------
-# Main Scraper
+# Main Scraper (Guest API only)
 # -------------------------
 def scrape_linkedin_jobs(query="Reliability Engineer", location="Canada", pages=5):
     results = []
@@ -108,7 +99,6 @@ def scrape_linkedin_jobs(query="Reliability Engineer", location="Canada", pages=
         )
         page = browser.new_page()
 
-
         linkedin_login(page)
 
         for page_num in range(pages):
@@ -118,28 +108,20 @@ def scrape_linkedin_jobs(query="Reliability Engineer", location="Canada", pages=
             job_ids = fetch_job_ids_via_guest_api(query, location, start=start)
             print(f"Found {len(job_ids)} job IDs on page {page_num+1}")
 
-            # Fetch each job page using Playwright
+            # Fetch job details via guest API (NOT Playwright)
             for job_id in job_ids:
-                job_url = f"https://www.linkedin.com/jobs/view/{job_id}"
-                print(f"Fetching job page: {job_url}")
+                api_url = f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{job_id}"
+                print(f"Fetching job details: {api_url}")
 
-                page.goto(job_url, timeout=60000)
-
-                # Wait for job content to actually load
                 try:
-                    page.wait_for_selector("h1.top-card-layout__title", timeout=15000)
-                except:
-                    print("⚠️ Job content did not load — saving shell HTML anyway")
-                
-                html = page.content()
-
-
-                html = page.content()
-                results.append({"html": html, "job_id": job_id})
+                    job_json = requests.get(api_url, timeout=10).json()
+                    results.append({"job_id": job_id, "data": job_json})
+                except Exception as e:
+                    print(f"Failed to fetch job {job_id}: {e}")
 
         browser.close()
 
-    print(f"\nTotal job pages fetched: {len(results)}")
+    print(f"\nTotal job entries fetched: {len(results)}")
     return results
 
 
