@@ -18,7 +18,7 @@ PASSWORD = os.getenv("LINKEDIN_PASSWORD")
 def linkedin_login(page):
     # Go to login page
     page.goto("https://www.linkedin.com/login", timeout=60000)
-    page.wait_for_timeout(2000)
+    page.wait_for_timeout(8000)
 
     # If LinkedIn auto-redirected you to feed or jobs, you're already logged in
     if "feed" in page.url or "jobs" in page.url:
